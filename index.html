@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestion Panneaux LED — DuoDisplay</title>
+<link rel="icon" href="logo.png" type="image/png">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f5f1; color: #293a34; padding: 12px; max-width: 1300px; margin: 0 auto; font-size: 13px; }
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; padding: 12px 18px; background: #293a34; border-radius: 6px; }
+.header img { height: 38px; width: auto; }
+.header h1 { font-size: 20px; font-weight: 700; color: #d7deca; letter-spacing: -0.5px; }
+h2 { font-size: 15px; margin-bottom: 10px; color: #293a34; }
+h3 { font-size: 12px; margin: 12px 0 8px; color: #5a6b62; text-transform: uppercase; letter-spacing: 0.5px; }
+.card { background: white; border-radius: 6px; padding: 14px 16px; margin-bottom: 12px; border: 1px solid #e2e5dc; box-shadow: 0 1px 3px rgba(41,58,52,0.06); }
+.stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
+.stock-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; background: #f9faf7; border-radius: 4px; border-left: 3px solid #d7deca; font-size: 12px; cursor: pointer; transition: background 0.15s; }
+.stock-row:hover { background: #eef0ea; }
+.stock-row.featured { background: #293a34; color: #d7deca; border-left-color: #8ba888; font-weight: 600; }
+.stock-row.featured:hover { background: #3a4f47; }
+.stock-row.featured .stock-qte { font-size: 18px; color: #d7deca; }
+.stock-row.alerte { background: #fce8e8; border-left-color: #c0392b; }
+.stock-row.alerte .stock-qte { color: #c0392b; font-weight: 700; }
+.stock-name { flex: 1; margin-right: 10px; line-height: 1.3; }
+.stock-qte { font-size: 15px; font-weight: 700; min-width: 40px; text-align: right; }
+.stock-sub { font-size: 10px; opacity: 0.6; }
+.stock-details { display: none; background: white; border: 1px solid #d7deca; border-radius: 4px; padding: 8px 12px; margin: 4px 0 8px; font-size: 11px; grid-column: 1 / -1; }
+.stock-details.open { display: block; }
+.stock-details table { font-size: 11px; }
+.stock-details th, .stock-details td { padding: 4px 6px; }
+.stock-details th { background: #f4f5f1; border-bottom: 1px solid #c8cfc0; font-size: 10px; }
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.form-group { margin-bottom: 6px; }
+.form-group label { display: block; font-size: 10px; color: #5a6b62; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+input, select, button { width: 100%; padding: 8px 10px; border: 1px solid #c8cfc0; border-radius: 4px; font-size: 13px; font-family: inherit; background: white; color: #293a34; }
+input:focus, select:focus { outline: none; border-color: #293a34; box-shadow: 0 0 0 2px rgba(41,58,52,0.1); }
+button { background: #293a34; color: #d7deca; border: none; cursor: pointer; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; padding: 9px 14px; }
+button:hover { background: #3a4f47; }
+button:disabled { background: #a8b0a5; cursor: not-allowed; }
+button.danger { background: #a12c2c; color: #f5e5e5; }
+button.success { background: #4a7a4a; color: #e8f0e0; }
+button.small { width: auto; padding: 4px 10px; font-size: 10px; }
+button.add-extra { background: #d7deca; color: #293a34; padding: 5px 10px; font-size: 11px; width: auto; }
+button.remove-extra { background: #a12c2c; color: #f5e5e5; padding: 3px 7px; font-size: 10px; width: auto; }
+button.toggle-articles { background: #d7deca; color: #293a34; padding: 8px 14px; font-size: 12px; width: 100%; margin-top: 8px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+button.toggle-articles:hover { background: #c8cfc0; }
+.mode-switch { display: flex; gap: 6px; margin-bottom: 12px; }
+.mode-btn { flex: 1; padding: 8px 12px; background: #f4f5f1; color: #5a6b62; border: 2px solid #d7deca; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 12px; text-align: center; transition: all 0.15s; }
+.mode-btn.active { background: #293a34; color: #d7deca; border-color: #293a34; }
+.mode-btn:hover:not(.active) { background: #e8ebe4; }
+.kit-preview { background: #f4f5f1; border: 1px solid #d7deca; border-radius: 4px; padding: 10px; margin-top: 8px; font-size: 12px; }
+.kit-preview table { font-size: 11px; }
+.kit-preview th, .kit-preview td { padding: 4px 6px; }
+.kit-preview th { background: none; border-bottom: 1px solid #c8cfc0; font-size: 10px; }
+.extras-list { margin-bottom: 8px; }
+.extra-item { display: grid; grid-template-columns: 2fr 1fr auto; gap: 6px; align-items: center; margin-bottom: 5px; }
+.extra-item select, .extra-item input { padding: 5px 8px; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { padding: 7px; text-align: left; border-bottom: 1px solid #e8ebe4; }
+th { font-weight: 700; color: #293a34; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; background: #f4f5f1; border-bottom: 2px solid #293a34; }
+tr.groupe-ligne { border-left: 4px solid #8ba888; cursor: pointer; transition: background 0.15s; }
+tr.groupe-ligne:hover { background: #f9faf7; }
+tr.groupe-ligne td:first-child { font-weight: 600; }
+tr.groupe-ligne.ouvert { background: #f0f3ec; }
+.expand-icon { display: inline-block; width: 16px; height: 16px; line-height: 16px; text-align: center; background: #d7deca; border-radius: 3px; font-size: 10px; margin-right: 6px; color: #293a34; transition: transform 0.15s; user-select: none; }
+.expand-icon.open { transform: rotate(90deg); }
+tr.details-ligne { background: #f9faf7; display: none; }
+tr.details-ligne.open { display: table-row; }
+tr.details-ligne td { padding: 8px 16px; font-size: 11px; color: #5a6b62; border-bottom: 1px solid #e8ebe4; }
+tr.details-ligne table { font-size: 11px; }
+tr.details-ligne th, tr.details-ligne td { padding: 4px 8px; border: none; text-transform: none; letter-spacing: 0; background: none; color: #5a6b62; font-weight: normal; }
+tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size: 10px; border-bottom: 1px solid #c8cfc0; }
+.badge { display: inline-block; padding: 3px 7px; border-radius: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.badge.reserve { background: #f0e6c8; color: #6b5a1e; }
+.badge.confirme { background: #d7deca; color: #293a34; }
+.badge.termine { background: #c8d9c8; color: #2c4a2c; }
+.actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.message { padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12px; }
+.message.success { background: #d7deca; color: #293a34; border-left: 4px solid #4a7a4a; padding: 12px 15px; line-height: 1.5; }
+.message.error { background: #f5d7d7; color: #842029; border-left: 4px solid #c0392b; padding: 12px 15px; font-size: 13px; line-height: 1.5; box-shadow: 0 2px 8px rgba(192, 57, 43, 0.15); white-space: pre-line; }
+.message.error strong { color: #842029; display: block; margin-bottom: 4px; }
+.message.error em { color: #5a3c3c; font-style: italic; font-size: 12px; }
+.loading { text-align: center; padding: 15px; color: #5a6b62; font-size: 12px; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #d7deca; border-top-color: #293a34; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { text-align: center; padding: 15px; color: #5a6b62; font-size: 12px; }
+.filtre { max-width: 240px; margin-bottom: 10px; font-size: 12px; }
+.legende { font-size: 10px; color: #5a6b62; margin-bottom: 8px; }
+.panel-ajout { padding: 10px; background: #f4f5f1; border: 1px solid #d7deca; border-radius: 4px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img src="logo.png" alt="DuoDisplay" onerror="this.style.display='none'">
+  <h1>Gestion Panneaux LED</h1>
+</div>
+
+<div id="message"></div>
+
+<div class="card">
+  <h2>📦 Stock
+    <span style="font-size:11px;color:#5a6b62;font-weight:400;margin-left:8px;">
+      <input type="date" id="dateVerifDebut" style="width:130px;display:inline-block;padding:4px 6px;font-size:11px;" onchange="synchroniserDates()">
+      →
+      <input type="date" id="dateVerifFin" style="width:130px;display:inline-block;padding:4px 6px;font-size:11px;" onchange="synchroniserDates()">
+      <button class="small" onclick="chargerStock()" style="margin-left:6px;">Vérifier</button>
+    </span>
+  </h2>
+  <div id="stockGrid" class="stock-grid">
+    <div class="loading"><span class="spinner"></span>Chargement...</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>➕ Nouvelle réservation</h2>
+  <div class="mode-switch">
+    <div class="mode-btn active" id="mode-btn-kit" onclick="setMode('kit')">🎬 Kit écrans LED</div>
+    <div class="mode-btn" id="mode-btn-libre" onclick="setMode('libre')">📦 Articles seuls</div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label>Client</label>
+      <input type="text" id="client" placeholder="Nom du client">
+    </div>
+    <div class="form-group" id="bloc-nbEcrans">
+      <label>Nombre d'écrans LED</label>
+      <input type="number" id="nbEcrans" min="0" value="1" oninput="calculerApercu()">
+    </div>
+    <div class="form-group">
+      <label>Date de début</label>
+      <input type="date" id="debut">
+    </div>
+    <div class="form-group">
+      <label>Date de fin</label>
+      <input type="date" id="fin">
+    </div>
+  </div>
+  <h3>➕ Articles supplémentaires</h3>
+  <div class="extras-list" id="extrasList"></div>
+  <button class="add-extra" onclick="ajouterExtra()">+ Ajouter un article</button>
+  <h3>🔍 Aperçu</h3>
+  <div class="kit-preview" id="kitPreview">
+    <em>Saisissez un nombre d'écrans ou ajoutez des articles.</em>
+  </div>
+  <div style="margin-top:12px;">
+    <button id="btnResa" onclick="validerReservation()">Réserver</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>📋 Réservations
+    <button class="small" onclick="chargerReservations()" style="margin-left:8px;">🔄 Rafraîchir</button>
+  </h2>
+  <div class="legende">Cliquez sur une ligne pour afficher le détail des articles</div>
+  <input type="text" class="filtre" id="filtreClient" placeholder="Filtrer par client..." oninput="afficherReservations()">
+  <div id="tableReservations" class="loading"><span class="spinner"></span>Chargement...</div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwV3pXjA5q7GCenjhXRfpdGF1RDTE9bGui-030CrbxWDHnLneMhDkJhR-knrVyWJdaCBg/exec";
+
+const KIT_STANDARD = {
+  "MPI-PLD001-1": { parEcran: 1 },
+  "MPI-PLD002-1": { parEcran: 3 },
+  "MPI-PLA003":   { fixe: 1 },
+  "MPI-PLA007":   { fixe: 1 },
+  "MPI-PLA005":   { moins1: true },
+  "MPI-PLA008":   { moins1: true },
+  "MPI-PLT001":   { arrondi: "ceil", parEcran: 0.1 }
+};
+
+const NOVASTAR_IDS = ["MPI-NOVASTAR/TB60", "MPI-NOVASTAR/TB8"];
+const ID_CHASSIS = "MPI-PLD001-1";
+const ID_TUILE = "MPI-PLD002-1";
+const KIT_LED_ID = "KIT-LED";
+const KIT_LED_COMPOSANTS = { "MPI-PLD001-1": 1, "MPI-PLD002-1": 3 };
+
+const ARTICLES_CRITIQUES = [
+  "MPI-PLD001-1", "MPI-PLD002-1",
+  "MPI-PLA003", "MPI-PLA007",
+  "MPI-PLA005", "MPI-PLA008",
+  "MPI-NOVASTAR/TB60", "MPI-NOVASTAR/TB8"
+];
+
+let reservationsCache = [];
+let inventaireCache = [];
+let modeActuel = "kit";
+
+function estCritique(idMateriel) {
+  return ARTICLES_CRITIQUES.indexOf(idMateriel) >= 0;
+}
+
+function formatDate(date) {
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, '0') + "-" + String(date.getDate()).padStart(2, '0');
+}
+function aujourdhui() { return formatDate(new Date()); }
+
+function synchroniserDates() {
+  const debut = document.getElementById('dateVerifDebut').value;
+  const fin = document.getElementById('dateVerifFin').value;
+  if (debut) document.getElementById('debut').value = debut;
+  if (fin) document.getElementById('fin').value = fin;
+}
+
+function afficherMessage(texte, type) {
+  const el = document.getElementById('message');
+  const txt = (texte === undefined || texte === null) ? "Erreur inconnue" : String(texte);
+  el.innerHTML = '<div class="message ' + type + '">' + txt + '</div>';
+  const duree = (type === 'error') ? 18000 : 6000;
+  setTimeout(function() { el.innerHTML = ''; }, duree);
+  if (type === 'error') window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setMode(m) {
+  modeActuel = m;
+  document.getElementById('mode-btn-kit').classList.toggle('active', m === 'kit');
+  document.getElementById('mode-btn-libre').classList.toggle('active', m === 'libre');
+  document.getElementById('bloc-nbEcrans').style.display = (m === 'kit') ? 'block' : 'none';
+  calculerApercu();
+}
+
+function fetchJSON(url, tentatives) {
+  tentatives = tentatives || 3;
+  return fetch(url, { redirect: 'follow' })
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      if (text.trim().startsWith("<")) throw new Error("HTML_RESPONSE");
+      try { return JSON.parse(text); } catch (e) { throw new Error("PARSE_ERROR"); }
+    })
+    .catch(function(err) {
+      if (tentatives > 1 && (err.message === "HTML_RESPONSE" || err.message === "PARSE_ERROR")) {
+        return new Promise(function(resolve) { setTimeout(resolve, 1000); })
+          .then(function() { return fetchJSON(url, tentatives - 1); });
+      }
+      throw err;
+    });
+}
+
+function appelAPI(action, methode, data) {
+  let url = API_URL;
+  let options = { redirect: 'follow' };
+  if (methode === 'POST') {
+    options.method = 'POST';
+    options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+    options.body = JSON.stringify(data);
+    return fetch(url, options)
+      .then(function(r) { return r.text(); })
+      .then(function(text) {
+        if (text.trim().startsWith("<")) throw new Error("HTML_RESPONSE");
+        try { return JSON.parse(text); }
+        catch (e) { console.error("Non-JSON:", text); throw new Error("Réponse invalide"); }
+      });
+  } else {
+    url += '?action=' + action;
+    return fetchJSON(url);
+  }
+}
+
+function chargerStock() {
+  const debut = document.getElementById('dateVerifDebut').value || aujourdhui();
+  const fin = document.getElementById('dateVerifFin').value || aujourdhui();
+  const el = document.getElementById('stockGrid');
+  el.innerHTML = '<div class="loading"><span class="spinner"></span>Chargement...</div>';
+
+  document.getElementById('debut').value = debut;
+  document.getElementById('fin').value = fin;
+
+  const url = API_URL + '?action=disponibilite&debut=' + debut + '&fin=' + fin + '&t=' + Date.now();
+  fetchJSON(url)
+    .then(function(data) {
+      const dispoParId = {};
+      data.forEach(function(item) { dispoParId[item.id] = item; });
+      let html = '';
+
+      const chassis = dispoParId[ID_CHASSIS] ? dispoParId[ID_CHASSIS].disponible : 0;
+      const tuiles = dispoParId[ID_TUILE] ? dispoParId[ID_TUILE].disponible : 0;
+      const panneauxComplets = Math.min(chassis, Math.floor(tuiles / 3));
+      html += '<div class="stock-row featured" onclick="toggleDetails(\'d-led\')">';
+      html += '<div class="stock-name">Panneaux LED complets<div class="stock-sub">châssis + 3 tuiles • cliquer pour détails</div></div>';
+      html += '<div class="stock-qte">' + panneauxComplets + '</div></div>';
+      html += '<div class="stock-details" id="d-led"><table><tr><th>Composant</th><th>Dispo</th></tr>';
+      html += '<tr><td>Châssis (MPI-PLD001-1)</td><td>' + chassis + '</td></tr>';
+      html += '<tr><td>Tuiles (MPI-PLD002-1)</td><td>' + tuiles + '</td></tr></table></div>';
+
+      let novaDispo = 0, novaTotal = 0, novaDetails = '';
+      NOVASTAR_IDS.forEach(function(id) {
+        if (dispoParId[id]) {
+          novaDispo += dispoParId[id].disponible;
+          novaTotal += dispoParId[id].total;
+          novaDetails += '<tr><td>' + dispoParId[id].type + '</td><td>' + dispoParId[id].disponible + '</td></tr>';
+        }
+      });
+      if (novaTotal > 0) {
+        const cls = novaDispo < 3 ? 'stock-row alerte' : 'stock-row';
+        html += '<div class="' + cls + '" onclick="toggleDetails(\'d-nova\')">';
+        html += '<div class="stock-name">NovaStar TB6 / TB8<div class="stock-sub">cliquer pour détails</div></div>';
+        html += '<div class="stock-qte">' + novaDispo + '</div></div>';
+        html += '<div class="stock-details" id="d-nova"><table><tr><th>Modèle</th><th>Dispo</th></tr>' + novaDetails + '</table></div>';
+      }
+
+      const articlesCaches = data.filter(function(item) {
+        return NOVASTAR_IDS.indexOf(item.id) < 0 && item.id !== ID_CHASSIS && item.id !== ID_TUILE;
+      });
+
+      html += '<div style="grid-column: 1 / -1;">';
+      html += '<button class="toggle-articles" onclick="toggleTousArticles()" id="btnTousArticles">📦 Voir tous les articles (' + articlesCaches.length + ')</button>';
+      html += '</div>';
+      html += '<div id="tousArticles" style="display:none; grid-column: 1 / -1;">';
+      html += '<div class="stock-grid" style="margin-top: 8px;">';
+      articlesCaches.forEach(function(item) {
+        const cls = item.disponible < 5 ? 'stock-row alerte' : 'stock-row';
+        html += '<div class="' + cls + '">';
+        html += '<div class="stock-name">' + item.type + '<div class="stock-sub">sur ' + item.total + ' en stock</div></div>';
+        html += '<div class="stock-qte">' + item.disponible + '</div></div>';
+      });
+      html += '</div></div>';
+
+      el.innerHTML = html;
+    })
+    .catch(function(err) {
+      el.innerHTML = '<div class="message error">Erreur : ' + err.message + '</div>';
+    });
+}
+
+function toggleDetails(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
+}
+
+function toggleTousArticles() {
+  const el = document.getElementById('tousArticles');
+  const btn = document.getElementById('btnTousArticles');
+  if (!el) return;
+  if (el.style.display === 'none' || el.style.display === '') {
+    el.style.display = 'block';
+    btn.innerHTML = '📦 Masquer les autres articles';
+  } else {
+    el.style.display = 'none';
+    const nb = el.querySelectorAll('.stock-row').length;
+    btn.innerHTML = '📦 Voir tous les articles (' + nb + ')';
+  }
+}
+
+function chargerInventairePourExtras() {
+  if (inventaireCache.length > 0) return;
+  appelAPI('inventaire', 'GET').then(function(data) {
+    inventaireCache = data;
+    inventaireCache.unshift({ id: KIT_LED_ID, type: "🎬 Panneaux LED complets (châssis + 3 tuiles)", total: 0 });
+  }).catch(function(err) { console.error("Inventaire:", err); });
+}
+
+function ajouterExtra() {
+  const list = document.getElementById('extrasList');
+  const div = document.createElement('div');
+  div.className = 'extra-item';
+  let options = '<option value="">-- Choisir un article --</option>';
+  inventaireCache.forEach(function(item) {
+    options += '<option value="' + item.id + '">' + item.type + '</option>';
+  });
+  div.innerHTML = '<select class="extra-select">' + options + '</select>' +
+    '<input type="number" class="extra-qte" min="1" value="1" placeholder="Qté">' +
+    '<button class="remove-extra" onclick="this.parentElement.remove();calculerApercu();">✕</button>';
+  div.querySelector('.extra-select').addEventListener('change', calculerApercu);
+  div.querySelector('.extra-qte').addEventListener('input', calculerApercu);
+  list.appendChild(div);
+  calculerApercu();
+}
+
+function getExtras() {
+  const extras = [];
+  document.querySelectorAll('.extra-item').forEach(function(div) {
+    const id = div.querySelector('.extra-select').value;
+    const qte = parseInt(div.querySelector('.extra-qte').value) || 0;
+    if (id && qte > 0) extras.push({ id: id, quantite: qte });
+  });
+  return extras;
+}
+
+function calculerKitLocal(nbEcrans) {
+  const kit = {};
+  for (const id in KIT_STANDARD) {
+    const regle = KIT_STANDARD[id];
+    let qte = 0;
+    if (regle.fixe !== undefined) qte = regle.fixe;
+    else if (regle.moins1) qte = Math.max(0, nbEcrans - 1);
+    else if (regle.arrondi === "ceil") qte = Math.ceil(nbEcrans * regle.parEcran);
+    else qte = nbEcrans * regle.parEcran;
+    if (qte > 0) kit[id] = qte;
+  }
+  return kit;
+}
+
+function fusionnerExtrasLocal(kit, extras) {
+  extras.forEach(function(extra) {
+    if (extra.id === KIT_LED_ID) {
+      for (const compId in KIT_LED_COMPOSANTS) {
+        const qte = KIT_LED_COMPOSANTS[compId] * extra.quantite;
+        kit[compId] = (kit[compId] || 0) + qte;
+      }
+      return;
+    }
+    if (kit[extra.id]) kit[extra.id] += extra.quantite;
+    else kit[extra.id] = extra.quantite;
+  });
+  return kit;
+}
+
+function calculerApercu() {
+  const el = document.getElementById('kitPreview');
+  const nbEcrans = (modeActuel === 'kit') ? (parseInt(document.getElementById('nbEcrans').value) || 0) : 0;
+  const extras = getExtras();
+  let kit = {};
+  if (modeActuel === 'kit' && nbEcrans >= 1) {
+    kit = calculerKitLocal(nbEcrans);
+    kit["MPI-NOVASTAR/TB60"] = 1;
+  }
+  kit = fusionnerExtrasLocal(kit, extras);
+  if (Object.keys(kit).length === 0) {
+    el.innerHTML = '<em>Saisissez un nombre d\'écrans ou ajoutez des articles.</em>';
+    return;
+  }
+  let html = '<table><thead><tr><th>Article</th><th>Quantité</th></tr></thead><tbody>';
+  for (const id in kit) {
+    let label = id;
+    if (id === "MPI-NOVASTAR/TB60") label = "NovaStar TB6 / TB8 (auto)";
+    else {
+      const item = inventaireCache.find(function(i) { return i.id === id; });
+      label = item ? item.type : id;
+    }
+    html += '<tr><td>' + label + '</td><td>' + kit[id] + '</td></tr>';
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function validerReservation() {
+  const client = document.getElementById('client').value.trim();
+  const debut = document.getElementById('debut').value;
+  const fin = document.getElementById('fin').value;
+
+  if (!client || !debut || !fin) {
+    afficherMessage('Veuillez remplir le client et les dates', 'error');
+    return;
+  }
+
+  const extras = getExtras();
+  const btn = document.getElementById('btnResa');
+  btn.disabled = true;
+  btn.textContent = 'Envoi...';
+
+  let payload, action;
+
+  if (modeActuel === 'kit') {
+    const nbEcrans = parseInt(document.getElementById('nbEcrans').value) || 0;
+    if (nbEcrans < 1 && extras.length === 0) {
+      afficherMessage('Saisissez au moins 1 écran ou un article', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Réserver';
+      return;
+    }
+    action = 'creerReservationKit';
+    payload = { action: action, client: client, nbEcrans: nbEcrans, debut: debut, fin: fin, extras: extras };
+  } else {
+    if (extras.length === 0) {
+      afficherMessage('Ajoutez au moins un article', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Réserver';
+      return;
+    }
+    action = 'creerReservationLibre';
+    payload = { action: action, client: client, articles: extras, debut: debut, fin: fin };
+  }
+
+  console.log("Envoi :", payload);
+
+  appelAPI(action, 'POST', payload)
+    .then(function(res) {
+      console.log("Réponse :", res);
+      if (res && res.succes) {
+        afficherMessage('✅ ' + (res.message || 'Réservation créée'), 'success');
+        document.getElementById('client').value = '';
+        document.getElementById('nbEcrans').value = 1;
+        document.getElementById('debut').value = '';
+        document.getElementById('fin').value = '';
+        document.getElementById('extrasList').innerHTML = '';
+        document.getElementById('kitPreview').innerHTML = '<em>Aperçu vide.</em>';
+        chargerStock();
+        chargerReservations();
+      } else {
+        const msg = (res && res.message) ? res.message : "Réservation impossible";
+        let messageComplet = '❌ <strong>Réservation refusée</strong>\n' + msg;
+        if (msg.toLowerCase().indexOf('insuffisant') !== -1) {
+          messageComplet += '\n\n👉 Conseil : vérifiez la disponibilité pour cette période, ou réduisez la quantité.';
+        }
+        afficherMessage(messageComplet, 'error');
+      }
+    })
+    .catch(function(err) {
+      console.error("Erreur :", err);
+      if (err.message === 'HTML_RESPONSE') {
+        afficherMessage('❌ <strong>Erreur de connexion</strong>\nLe serveur ne répond pas. Réessayez dans quelques secondes.', 'error');
+      } else {
+        afficherMessage('❌ <strong>Erreur</strong> : ' + err.message, 'error');
+      }
+    })
+    .finally(function() {
+      btn.disabled = false;
+      btn.textContent = 'Réserver';
+    });
+}
+
+function chargerReservations() {
+  const el = document.getElementById('tableReservations');
+  el.innerHTML = '<div class="loading"><span class="spinner"></span>Chargement...</div>';
+
+  if (inventaireCache.length === 0) {
+    appelAPI('inventaire', 'GET').then(function(data) {
+      inventaireCache = data;
+      inventaireCache.unshift({ id: KIT_LED_ID, type: "🎬 Panneaux LED complets (châssis + 3 tuiles)", total: 0 });
+      appelAPI('reservations', 'GET').then(function(data) {
+        reservationsCache = data;
+        afficherReservations();
+      });
+    }).catch(function(err) {
+      el.innerHTML = '<div class="message error">Erreur : ' + err.message + '</div>';
+    });
+  } else {
+    appelAPI('reservations', 'GET')
+      .then(function(data) { reservationsCache = data; afficherReservations(); })
+      .catch(function(err) { el.innerHTML = '<div class="message error">Erreur : ' + err.message + '</div>'; });
+  }
+}
+
+function afficherReservations() {
+  const el = document.getElementById('tableReservations');
+  const filtre = document.getElementById('filtreClient').value.toLowerCase();
+
+  const typeParId = {};
+  inventaireCache.forEach(function(item) { typeParId[item.id] = item.type; });
+
+  const groupes = {};
+  reservationsCache.forEach(function(r) {
+    if (r.statut === 'Annulé') return;
+    if (filtre && r.client.toLowerCase().indexOf(filtre) === -1) return;
+    const g = r.groupe || 'sans-groupe-' + r.id;
+    if (!groupes[g]) groupes[g] = [];
+    groupes[g].push(r);
+  });
+
+  const groupesTries = Object.keys(groupes).sort(function(a, b) {
+    return groupes[a][0].debut.localeCompare(groupes[b][0].debut);
+  });
+
+  let html = '<table><thead><tr>';
+  html += '<th style="width:50%;">Client / Articles</th><th>Panneaux</th><th>Début</th><th>Fin</th><th>Statut</th><th>Actions</th>';
+  html += '</tr></thead><tbody>';
+
+  let count = 0;
+  groupesTries.forEach(function(g) {
+    const lignes = groupes[g];
+    const premiere = lignes[0];
+    count++;
+
+    let badgeClass = 'reserve';
+    if (premiere.statut === 'Confirmé') badgeClass = 'confirme';
+    else if (premiere.statut === 'Terminé') badgeClass = 'termine';
+
+    // Calculer le nombre de panneaux LED complets = min(nb châssis, floor(nb tuiles / 3))
+    let nbChassis = 0, nbTuiles = 0;
+    lignes.forEach(function(l) {
+      if (l.materiel === ID_CHASSIS) nbChassis += l.quantite;
+      if (l.materiel === ID_TUILE) nbTuiles += l.quantite;
+    });
+    const nbPanneaux = Math.min(nbChassis, Math.floor(nbTuiles / 3));
+
+    let qteAffichee;
+    if (nbPanneaux > 0) {
+      qteAffichee = '<strong>' + nbPanneaux + '</strong> <span style="font-size:10px;color:#5a6b62;">panneaux</span>';
+    } else {
+      qteAffichee = '<span style="color:#86868b;font-size:11px;">—</span>';
+    }
+
+    html += '<tr class="groupe-ligne" id="row-' + g + '" onclick="toggleGroupe(\'' + g + '\')">';
+    html += '<td><span class="expand-icon" id="icon-' + g + '">▶</span>';
+    html += '<strong>' + premiere.client + '</strong>';
+    html += ' <span style="color:#5a6b62;font-size:11px;font-weight:normal;">(' + lignes.length + ' article' + (lignes.length > 1 ? 's' : '') + ')</span></td>';
+    html += '<td>' + qteAffichee + '</td>';
+    html += '<td>' + premiere.debut + '</td><td>' + premiere.fin + '</td>';
+    html += '<td><span class="badge ' + badgeClass + '">' + premiere.statut + '</span></td>';
+    html += '<td class="actions">';
+    if (premiere.statut === 'Réservé') {
+      html += '<button class="small success" onclick="event.stopPropagation();changerStatutGroupe(\'' + g + '\', \'Confirmé\')">Confirmer</button>';
+      html += '<button class="small danger" onclick="event.stopPropagation();changerStatutGroupe(\'' + g + '\', \'Annulé\')">Annuler</button>';
+    } else if (premiere.statut === 'Confirmé') {
+      html += '<button class="small danger" onclick="event.stopPropagation();changerStatutGroupe(\'' + g + '\', \'Annulé\')">Annuler</button>';
+    } else if (premiere.statut === 'Terminé') {
+      html += '<button class="small success" onclick="event.stopPropagation();validerRetour(\'' + g + '\')">✅ Valider le retour</button>';
+    }
+    html += '</td></tr>';
+
+    html += '<tr class="details-ligne" id="det-' + g + '"><td colspan="6">';
+    html += '<table><thead><tr><th>Article</th><th>Quantité</th><th style="width:100px;">Actions</th></tr></thead><tbody>';
+    lignes.forEach(function(l) {
+      const designation = typeParId[l.materiel] || l.materiel;
+      const critique = estCritique(l.materiel);
+      const icone = critique ? '🔴' : '⚪';
+      let actions = '';
+      if (l.statut === 'Réservé' || l.statut === 'Confirmé') {
+        actions = '<button class="small" onclick="event.stopPropagation();modifierLigne(\'' + l.id + '\', \'' + designation.replace(/'/g, "\\'") + '\', ' + l.quantite + ', \'' + l.materiel + '\')" title="Modifier la quantité">✏️</button> ';
+        actions += '<button class="small danger" onclick="event.stopPropagation();supprimerLigne(\'' + l.id + '\', \'' + designation.replace(/'/g, "\\'") + '\', ' + l.quantite + ', \'' + l.materiel + '\')" title="Supprimer cet article">❌</button>';
+      }
+      html += '<tr>';
+      html += '<td>' + icone + ' ' + designation + '</td>';
+      html += '<td>' + l.quantite + '</td>';
+      html += '<td>' + actions + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+
+    if (premiere.statut === 'Réservé' || premiere.statut === 'Confirmé') {
+      html += '<div style="margin-top:10px;">';
+      html += '<button class="small add-extra" onclick="event.stopPropagation();ajouterArticleGroupe(\'' + g + '\')">➕ Ajouter un article à cette réservation</button>';
+      html += '</div>';
+      html += '<div id="ajout-panel-' + g + '"></div>';
+    }
+
+    html += '<div style="font-size:10px;color:#86868b;margin-top:6px;">🔴 = article critique (indispensable au kit) • ⚪ = article optionnel</div>';
+    html += '</td></tr>';
+  });
+
+  if (count === 0) html += '<tr><td colspan="6" class="empty">Aucune réservation</td></tr>';
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function toggleGroupe(g) {
+  const det = document.getElementById('det-' + g);
+  const icon = document.getElementById('icon-' + g);
+  const row = document.getElementById('row-' + g);
+  if (det) det.classList.toggle('open');
+  if (icon) icon.classList.toggle('open');
+  if (row) row.classList.toggle('ouvert');
+}
+
+function modifierLigne(ligneId, designation, ancienneQte, idMateriel) {
+  const critique = estCritique(idMateriel);
+  const avertissement = critique
+    ? '⚠️ ATTENTION : « ' + designation + ' » est un article INDISPENSABLE au fonctionnement des écrans complets.\n\nLe modifier peut rendre l\'ensemble du kit inutilisable.\n\nContinuer ?'
+    : 'ℹ️ « ' + designation + ' » est un article optionnel.\n\nContinuer ?';
+  if (!confirm(avertissement)) return;
+
+  let ligneTrouvee = null;
+  reservationsCache.forEach(function(r) { if (r.id === ligneId) ligneTrouvee = r; });
+
+  let infoMax = '';
+  if (ligneTrouvee) {
+    const debut = ligneTrouvee.debut, fin = ligneTrouvee.fin;
+    const auj = aujourdhui();
+    let dejaReserve = 0;
+    reservationsCache.forEach(function(r) {
+      if (r.id === ligneId) return;
+      if (r.materiel !== idMateriel) return;
+      if (r.statut !== 'Réservé' && r.statut !== 'Confirmé') return;
+      if (r.fin < auj) return;
+      if (r.debut <= fin && r.fin >= debut) dejaReserve += r.quantite;
+    });
+    const item = inventaireCache.find(function(i) { return i.id === idMateriel; });
+    if (item) {
+      const dispoMax = item.total - dejaReserve;
+      infoMax = ' (max disponible sur cette période : ' + dispoMax + ')';
+    }
+  }
+
+  const nouvelleQte = prompt('Nouvelle quantité pour « ' + designation + ' »' + infoMax + '\nActuellement : ' + ancienneQte, ancienneQte);
+  if (nouvelleQte === null) return;
+
+  const qte = parseInt(nouvelleQte);
+  if (!qte || qte < 1) { afficherMessage('Quantité invalide', 'error'); return; }
+  if (qte === ancienneQte) { afficherMessage('Aucune modification', 'error'); return; }
+
+  appelAPI('modifierLigne', 'POST', { action: 'modifierLigne', ligneId: ligneId, nouvelleQuantite: qte })
+    .then(function(res) {
+      if (res && res.succes) {
+        afficherMessage('✅ ' + res.message, 'success');
+        chargerReservations();
+        chargerStock();
+      } else {
+        afficherMessage('❌ ' + (res && res.message ? res.message : "Erreur"), 'error');
+      }
+    });
+}
+
+function supprimerLigne(ligneId, designation, quantite, idMateriel) {
+  const critique = estCritique(idMateriel);
+  const avertissement = critique
+    ? '🚨 ATTENTION CRITIQUE 🚨\n\n« ' + designation + ' » (×' + quantite + ') est INDISPENSABLE au fonctionnement des écrans complets.\n\nLa suppression peut :\n• Rendre les écrans inutilisables\n• Empêcher l\'alimentation électrique\n• Bloquer la transmission des données\n\nÊtes-vous ABSOLUMENT sûr ?'
+    : 'ℹ️ Supprimer « ' + designation + ' » (×' + quantite + ') ?\n\nCet article est optionnel.';
+  if (!confirm(avertissement)) return;
+  if (critique) {
+    if (!confirm('Confirmation FINALE : supprimer définitivement « ' + designation + ' » ?')) return;
+  }
+
+  appelAPI('supprimerLigne', 'POST', { action: 'supprimerLigne', ligneId: ligneId })
+    .then(function(res) {
+      if (res && res.succes) {
+        afficherMessage('✅ ' + res.message, 'success');
+        chargerReservations();
+        chargerStock();
+      } else {
+        afficherMessage('❌ ' + (res && res.message ? res.message : "Erreur"), 'error');
+      }
+    });
+}
+
+function ajouterArticleGroupe(groupe) {
+  let options = '<option value="">-- Choisir un article --</option>';
+  inventaireCache.forEach(function(item) {
+    options += '<option value="' + item.id + '">' + item.type + '</option>';
+  });
+
+  const panel = document.getElementById('ajout-panel-' + groupe);
+  if (!panel) return;
+
+  if (panel.innerHTML === '') {
+    panel.innerHTML =
+      '<div class="panel-ajout">' +
+      '<strong style="font-size:12px;">➕ Ajouter un article à cette réservation</strong>' +
+      '<div style="display:grid;grid-template-columns:2fr 1fr auto;gap:6px;margin-top:8px;align-items:center;">' +
+      '<select id="ajout-select-' + groupe + '" style="padding:6px;font-size:12px;">' + options + '</select>' +
+      '<input type="number" id="ajout-qte-' + groupe + '" min="1" value="1" placeholder="Qté" style="padding:6px;font-size:12px;">' +
+      '<button class="small success" onclick="confirmerAjout(\'' + groupe + '\')">Ajouter</button>' +
+      '</div>' +
+      '<div style="margin-top:6px;">' +
+      '<button class="small" onclick="document.getElementById(\'ajout-panel-' + groupe + '\').innerHTML=\'\'">Annuler</button>' +
+      '</div>' +
+      '</div>';
+  } else {
+    panel.innerHTML = '';
+  }
+}
+
+function confirmerAjout(groupe) {
+  const select = document.getElementById('ajout-select-' + groupe);
+  const qteInput = document.getElementById('ajout-qte-' + groupe);
+  const materielId = select.value;
+  const quantite = parseInt(qteInput.value) || 0;
+
+  if (!materielId) { afficherMessage('Veuillez choisir un article', 'error'); return; }
+  if (quantite < 1) { afficherMessage('Quantité invalide', 'error'); return; }
+
+  const item = inventaireCache.find(function(i) { return i.id === materielId; });
+  const designation = item ? item.type : materielId;
+  const critique = estCritique(materielId);
+
+  const avertissement = critique
+    ? '⚠️ « ' + designation + ' » est un article CRITIQUE du kit.\n\nL\'ajouter modifiera l\'ensemble du kit.\n\nConfirmer l\'ajout de ×' + quantite + ' ?'
+    : 'ℹ️ Ajouter « ' + designation + ' » ×' + quantite + ' ?';
+  if (!confirm(avertissement)) return;
+
+  appelAPI('ajouterLigneGroupe', 'POST', {
+    action: 'ajouterLigneGroupe',
+    groupe: groupe,
+    materielId: materielId,
+    quantite: quantite
+  }).then(function(res) {
+    if (res && res.succes) {
+      afficherMessage('✅ ' + res.message, 'success');
+      chargerReservations();
+      chargerStock();
+    } else {
+      afficherMessage('❌ ' + (res && res.message ? res.message : "Erreur"), 'error');
+    }
+  });
+}
+
+function changerStatutGroupe(groupe, statut) {
+  let message;
+  if (statut === 'Annulé') {
+    message = '⚠️ ATTENTION : Cette action va SUPPRIMER DÉFINITIVEMENT toutes les lignes de ce groupe.\n\nContinuer ?';
+  } else {
+    message = 'Passer toutes les lignes de ce groupe au statut "' + statut + '" ?';
+  }
+  if (!confirm(message)) return;
+
+  appelAPI('changerStatutGroupe', 'POST', {action: 'changerStatutGroupe', groupe: groupe, statut: statut})
+    .then(function(res) {
+      if (res && res.succes) {
+        afficherMessage('✅ ' + res.message, 'success');
+        chargerReservations();
+        chargerStock();
+      } else {
+        afficherMessage('❌ ' + (res && res.message ? res.message : "Erreur"), 'error');
+      }
+    });
+}
+
+function validerRetour(groupe) {
+  if (!confirm('⚠️ ATTENTION : Cette action va SUPPRIMER DÉFINITIVEMENT toutes les lignes de ce groupe.\n\nLe matériel est bien revenu en stock ?\n\nContinuer ?')) return;
+
+  appelAPI('changerStatutGroupe', 'POST', {action: 'changerStatutGroupe', groupe: groupe, statut: 'Supprimer'})
+    .then(function(res) {
+      if (res && res.succes) {
+        afficherMessage('✅ ' + res.message, 'success');
+        chargerReservations();
+        chargerStock();
+      } else {
+        afficherMessage('❌ ' + (res && res.message ? res.message : "Erreur"), 'error');
+      }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const auj = aujourdhui();
+  document.getElementById('dateVerifDebut').value = auj;
+  document.getElementById('dateVerifFin').value = auj;
+  chargerStock();
+  chargerReservations();
+  chargerInventairePourExtras();
+});
+</script>
+
+</body>
+</html>
