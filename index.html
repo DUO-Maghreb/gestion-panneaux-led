@@ -89,7 +89,8 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 .filtre { max-width: 240px; margin-bottom: 10px; font-size: 12px; }
 .legende { font-size: 10px; color: #5a6b62; margin-bottom: 8px; }
 .panel-ajout { padding: 10px; background: #f4f5f1; border: 1px solid #d7deca; border-radius: 4px; margin-top: 8px; }
-.rappel-montage { background: #fff8e1; border-left: 4px solid #f0b429; border-radius: 4px; padding: 12px 14px; margin-top: 8px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(240, 180, 41, 0.2); }
+.rappel-montage { background: #fff8e1; border-left: 4px solid #f0b429; border-radius: 4px; padding: 10px 14px; margin-top: 8px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(240, 180, 41, 0.2); animation: fadeIn 0.3s ease-in; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
@@ -217,7 +218,7 @@ function synchroniserDates() {
   if (fin) document.getElementById('fin').value = fin;
 }
 
-// ===== RAPPEL DE MONTAGE (sur la date de vérification/Stock) =====
+// ===== RAPPEL DE MONTAGE (message temporaire 8 secondes, sans confirmation) =====
 function verifierDateMontageStock() {
   const debut = document.getElementById('dateVerifDebut').value;
   const el = document.getElementById('rappel-montage-stock');
@@ -227,36 +228,26 @@ function verifierDateMontageStock() {
   
   if (!debut) {
     el.style.display = 'none';
+    el.innerHTML = '';
     return;
   }
 
+  // Afficher le message temporaire
   el.style.display = 'block';
   el.innerHTML =
-    '<div class="rappel-montage">' +
-    '<div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">⚠️ RAPPEL IMPORTANT</div>' +
-    '<div style="border-top:1px solid #f0b429;margin-bottom:8px;"></div>' +
-    '<div style="font-size:12px;line-height:1.6;color:#6b5a1e;">' +
-    'La date de début inclut le jour de <strong>MONTAGE</strong>.<br><br>' +
-    '📅 <strong>Date choisie :</strong> ' + formatDateFr(debut) + '<br><br>' +
-    '→ Le matériel doit être <strong>livré et installé</strong> à cette date.<br><br>' +
-    '<strong>Confirmez-vous cette date ?</strong>' +
-    '</div>' +
-    '<div style="margin-top:10px;display:flex;gap:6px;">' +
-    '<button type="button" class="small success" onclick="confirmerMontageStock()">✅ Oui, je confirme</button>' +
-    '<button type="button" class="small" onclick="corrigerMontageStock()">✏️ Modifier la date</button>' +
-    '</div>' +
+    '<div class="rappel-montage" style="font-size:12px;color:#6b5a1e;padding:10px 14px;">' +
+    '⚠️ <strong>Rappel :</strong> La date de début inclut le jour de montage. ' +
+    'Le matériel doit être <strong>livré et installé</strong> ce jour-là.' +
     '</div>';
-}
 
-function confirmerMontageStock() {
-  const el = document.getElementById('rappel-montage-stock');
-  el.innerHTML = '<div class="rappel-montage" style="background:#d4edda;border-left-color:#4a7a4a;color:#2c4a2c;font-size:12px;">✅ <strong>Date de montage confirmée</strong> — Vous pouvez vérifier la disponibilité.</div>';
-  setTimeout(function() { el.style.display = 'none'; }, 4000);
-}
-
-function corrigerMontageStock() {
-  document.getElementById('dateVerifDebut').focus();
-  document.getElementById('rappel-montage-stock').style.display = 'none';
+  // Annuler l'ancien timer si on clique plusieurs fois
+  if (window._rappelTimer) clearTimeout(window._rappelTimer);
+  
+  // Faire disparaître après 8 secondes
+  window._rappelTimer = setTimeout(function() {
+    el.style.display = 'none';
+    el.innerHTML = '';
+  }, 8000);
 }
 
 function afficherMessage(texte, type) {
