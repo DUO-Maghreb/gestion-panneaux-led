@@ -88,10 +88,14 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 .filtre { max-width: 240px; margin-bottom: 10px; font-size: 12px; }
 .legende { font-size: 10px; color: #5a6b62; margin-bottom: 8px; }
 .panel-ajout { padding: 10px; background: #f4f5f1; border: 1px solid #d7deca; border-radius: 4px; margin-top: 8px; }
-.rappel-dates { background: #fff8e1; border-left: 3px solid #f0b429; padding: 6px 10px; font-size: 11px; color: #6b5a1e; border-radius: 4px; margin-bottom: 8px; line-height: 1.4; }
-.rappel-dates strong { color: #5a4a15; }
-.rappel-montage { background: #fff8e1; border-left: 3px solid #f0b429; padding: 8px 10px; font-size: 11px; color: #6b5a1e; border-radius: 4px; margin-top: 6px; line-height: 1.4; }
-.rappel-montage strong { color: #5a4a15; }
+.rappel-montage {
+  background: #fff8e1;
+  border-left: 4px solid #f0b429;
+  border-radius: 4px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  box-shadow: 0 1px 3px rgba(240, 180, 41, 0.2);
+}
 </style>
 </head>
 <body>
@@ -112,7 +116,6 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
       <button class="small" onclick="chargerStock()" style="margin-left:6px;">Vérifier</button>
     </span>
   </h2>
-  <div class="rappel-dates">ℹ️ <strong>Rappel :</strong> le jour d'installation doit être <strong>inclus</strong> dans la période de location.</div>
   <div id="stockGrid" class="stock-grid">
     <div class="loading"><span class="spinner"></span>Chargement...</div>
   </div>
@@ -203,7 +206,6 @@ function formatDate(date) {
 }
 function aujourdhui() { return formatDate(new Date()); }
 
-// Convertit "2026-09-25" en "25/09/2026"
 function formatDateFr(ymd) {
   if (!ymd || ymd.indexOf('-') === -1) return ymd;
   const parts = ymd.split('-');
@@ -226,24 +228,28 @@ function verifierDateMontage() {
     return;
   }
 
-  const dateFormatee = formatDateFr(debut);
-
   el.style.display = 'block';
   el.innerHTML =
     '<div class="rappel-montage">' +
-    '⚠️ <strong>Avez-vous bien inclus la date de montage ?</strong><br>' +
-    'Vérifiez que le <strong>' + dateFormatee + '</strong> correspond au jour d\'installation.' +
-    '<div style="margin-top:6px;display:flex;gap:6px;">' +
-    '<button type="button" class="small success" onclick="confirmerMontage()">✅ Oui, c\'est bon</button>' +
-    '<button type="button" class="small" onclick="corrigerMontage()">✏️ Je corrige</button>' +
+    '<div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">⚠️ RAPPEL IMPORTANT</div>' +
+    '<div style="border-top:1px solid #f0b429;margin-bottom:8px;"></div>' +
+    '<div style="font-size:12px;line-height:1.6;color:#6b5a1e;">' +
+    'La date de début inclut le jour de <strong>MONTAGE</strong>.<br><br>' +
+    '📅 <strong>Date choisie :</strong> ' + debut + '<br><br>' +
+    '→ Le matériel doit être <strong>livré et installé</strong> à cette date.<br><br>' +
+    '<strong>Confirmez-vous cette date ?</strong>' +
+    '</div>' +
+    '<div style="margin-top:10px;display:flex;gap:6px;">' +
+    '<button type="button" class="small success" onclick="confirmerMontage()">✅ Oui, je confirme</button>' +
+    '<button type="button" class="small" onclick="corrigerMontage()">✏️ Modifier la date</button>' +
     '</div>' +
     '</div>';
 }
 
 function confirmerMontage() {
   const el = document.getElementById('rappel-montage');
-  el.innerHTML = '<div style="font-size:10px;color:#4a7a4a;padding:4px;">✅ Date de montage confirmée</div>';
-  setTimeout(function() { el.style.display = 'none'; }, 3000);
+  el.innerHTML = '<div class="rappel-montage" style="background:#d4edda;border-left-color:#4a7a4a;color:#2c4a2c;font-size:12px;">✅ <strong>Date de montage confirmée</strong> — Vous pouvez continuer la réservation.</div>';
+  setTimeout(function() { el.style.display = 'none'; }, 4000);
 }
 
 function corrigerMontage() {
